@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보드게임 뽑기</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: #fff;
+    color: #1a1a1a;
+    padding: 20px;
+  }
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+  .section { margin-bottom: 16px; }
+  label { font-size: 13px; color: #888; margin-bottom: 6px; display: block; }
+  .people-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .people-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 1.5px solid #ddd; background: #fff;
+    font-size: 14px; cursor: pointer; transition: all .15s;
+    color: #1a1a1a; font-weight: 500;
+  }
+  .people-btn:hover { border-color: #7F77DD; color: #7F77DD; }
+  .people-btn.active { background: #7F77DD; border-color: #7F77DD; color: #fff; }
+  .pick-btn {
+    width: 100%; padding: 12px; border-radius: 10px; border: none;
+    background: #7F77DD; color: #fff; font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: background .15s; margin-bottom: 20px;
+  }
+  .pick-btn:hover { background: #6a62c4; }
+  .pick-btn:active { transform: scale(0.98); }
+  .result-box {
+    border-radius: 12px; border: 1.5px solid #e8e6ff;
+    background: #f5f4ff; padding: 20px; text-align: center; display: none;
+  }
+  .result-box.show { display: block; animation: pop .3s ease; }
+  @keyframes pop {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .result-label { font-size: 12px; color: #7F77DD; font-weight: 600; margin-bottom: 8px; }
+  .result-name { font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; }
+  .result-people { font-size: 13px; color: #888; margin-bottom: 14px; }
+  .action-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .reroll-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1.5px solid #7F77DD;
+    background: #fff; color: #7F77DD; font-size: 13px; cursor: pointer;
+    transition: background .15s;
+  }
+  .reroll-btn:hover { background: #f0efff; }
+  .exclude-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1.5px solid #f0a0a0;
+    background: #fff; color: #c0392b; font-size: 13px; cursor: pointer;
+    transition: background .15s;
+  }
+  .exclude-btn:hover { background: #fff5f4; }
+  .error-box {
+    border-radius: 10px; border: 1px solid #ffd0cc;
+    background: #fff5f4; padding: 14px; font-size: 13px;
+    color: #c0392b; display: none; text-align: center; line-height: 1.6;
+  }
+  .error-box.show { display: block; }
+  .loading { text-align: center; font-size: 13px; color: #aaa; padding: 12px 0; display: none; }
+  .loading.show { display: block; }
+  .api-section {
+    margin-bottom: 20px; padding: 14px;
+    border-radius: 10px; background: #f9f9f9; border: 1px solid #eee;
+  }
+  .api-section input {
+    width: 100%; font-size: 13px; padding: 8px 10px;
+    border-radius: 8px; border: 1px solid #ddd; outline: none;
+    margin-top: 6px; color: #1a1a1a; background: #fff;
+  }
+  .api-section input:focus { border-color: #7F77DD; }
+  .save-btn {
+    margin-top: 8px; padding: 7px 16px; border-radius: 8px;
+    border: 1px solid #7F77DD; background: #fff; color: #7F77DD;
+    font-size: 13px; cursor: pointer;
+  }
+  .save-btn:hover { background: #f0efff; }
+  .saved-msg { font-size: 12px; color: #1D9E75; margin-top: 6px; display: none; }
+  .api-toggle {
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; margin-bottom: 4px; user-select: none;
+    width: fit-content;
+  }
+  .api-toggle span { font-size: 13px; color: #aaa; }
+  .api-toggle .arrow { font-size: 10px; color: #aaa; transition: transform .2s; }
+  .api-toggle.open .arrow { transform: rotate(90deg); }
+  .api-body { display: none; }
+  .api-body.open { display: block; }
+  .excluded-section { margin-top: 16px; }
+  .excluded-title {
+    font-size: 12px; color: #aaa; margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .clear-btn {
+    font-size: 11px; color: #bbb; background: none; border: none;
+    cursor: pointer; text-decoration: underline;
+  }
+  .excluded-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .excluded-tag {
+    font-size: 12px; background: #f5f5f5; border-radius: 6px;
+    padding: 4px 10px; color: #888; display: flex; align-items: center; gap: 4px;
+  }
+  .excluded-tag button {
+    background: none; border: none; cursor: pointer;
+    color: #bbb; font-size: 12px; padding: 0; line-height: 1;
+  }
+  .excluded-tag button:hover { color: #c0392b; }
+</style>
+</head>
+<body>
+<h2>🎲 보드게임 뽑기</h2>
+
+<div class="api-section">
+  <div class="api-toggle" id="apiToggle" onclick="toggleApi()">
+    <span class="arrow">▶</span>
+    <span id="toggleLabel">API 키 설정</span>
+  </div>
+  <div class="api-body" id="apiBody">
+    <input type="password" id="apiKey" placeholder="ntn_로 시작하는 API 키 입력..." />
+    <br>
+    <button class="save-btn" onclick="saveKey()">저장</button>
+    <p class="saved-msg" id="savedMsg"></p>
+  </div>
+</div>
+
+<div class="section">
+  <label>인원 선택</label>
+  <div class="people-grid" id="peopleGrid"></div>
+</div>
+
+<button class="pick-btn" onclick="pickGame()">🎲 뽑기!</button>
+<div class="loading" id="loading">불러오는 중...</div>
+<div class="error-box" id="errorBox"></div>
+<div class="result-box" id="resultBox">
+  <div class="result-label">오늘의 보드게임</div>
+  <div class="result-name" id="resultName"></div>
+  <div class="result-people" id="resultPeople"></div>
+  <div class="action-btns">
+    <button class="reroll-btn" onclick="reroll()">🔄 다시 뽑기</button>
+    <button class="exclude-btn" onclick="excludeCurrent()">🚫 다시는 추천 안 함</button>
+  </div>
+</div>
+
+<div class="excluded-section" id="excludedSection" style="display:none">
+  <div class="excluded-title">
+    <span>제외된 게임</span>
+    <button class="clear-btn" onclick="clearExcluded()">전체 해제</button>
+  </div>
+  <div class="excluded-list" id="excludedList"></div>
+</div>
+
+<script>
+const DB_ID = '31a4ed993ec78012999ed2f905c2bbdb';
+const PROXY = 'https://shy-truth-5c30.ksm901522.workers.dev/';
+let selectedPeople = null;
+let currentGame = null;
+let allFetched = [];
+let excluded = JSON.parse(localStorage.getItem('excluded_games') || '[]');
+
+const grid = document.getElementById('peopleGrid');
+for (let i = 2; i <= 12; i++) {
+  const btn = document.createElement('button');
+  btn.className = 'people-btn';
+  btn.textContent = i;
+  btn.onclick = () => {
+    selectedPeople = i;
+    document.querySelectorAll('.people-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  };
+  grid.appendChild(btn);
+}
+
+function toggleApi() {
+  document.getElementById('apiBody').classList.toggle('open');
+  document.getElementById('apiToggle').classList.toggle('open');
+}
+
+window.onload = () => {
+  const saved = localStorage.getItem('notion_api_key');
+  if (saved) {
+    document.getElementById('apiKey').value = saved;
+    const msg = document.getElementById('savedMsg');
+    msg.style.display = 'block';
+    msg.textContent = '✓ 저장된 키가 있어요!';
+    document.getElementById('toggleLabel').textContent = 'API 키 설정 ✓';
+  } else {
+    toggleApi();
+  }
+  renderExcluded();
+};
+
+function saveKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (!key) return;
+  localStorage.setItem('notion_api_key', key);
+  const msg = document.getElementById('savedMsg');
+  msg.style.display = 'block';
+  msg.textContent = '✓ 저장되었습니다!';
+  document.getElementById('toggleLabel').textContent = 'API 키 설정 ✓';
+  setTimeout(() => {
+    document.getElementById('apiBody').classList.remove('open');
+    document.getElementById('apiToggle').classList.remove('open');
+  }, 800);
+}
+
+async function pickGame() {
+  const apiKey = localStorage.getItem('notion_api_key') || document.getElementById('apiKey').value.trim();
+  if (!apiKey) { showError('API 키를 먼저 입력하고 저장해주세요!'); return; }
+  if (!selectedPeople) { showError('인원을 먼저 선택해주세요!'); return; }
+
+  showLoading(true);
+  hideAll();
+  allFetched = [];
+
+  try {
+    let hasMore = true;
+    let cursor = undefined;
+
+    while (hasMore) {
+      const body = { apiKey, dbId: DB_ID };
+      if (cursor) body.cursor = cursor;
+
+      const res = await fetch(PROXY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) throw new Error('프록시 호출 실패: ' + res.status);
+      const data = await res.json();
+
+      if (data.status === 401) throw new Error('API 키가 올바르지 않아요!');
+      if (data.status === 404) throw new Error('데이터베이스를 찾을 수 없어요! Integration 연결을 확인해주세요!');
+      if (!data.results) throw new Error('응답 오류: ' + JSON.stringify(data));
+
+      allFetched = allFetched.concat(data.results);
+      hasMore = data.has_more;
+      cursor = data.next_cursor;
+    }
+
+    pickFromFetched();
+
+  } catch(e) {
+    showError('오류: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+function pickFromFetched() {
+  const filtered = allFetched.filter(page => {
+    const peopleProp = page.properties['가능인원'];
+    if (!peopleProp || peopleProp.type !== 'multi_select') return false;
+    const hasPeople = peopleProp.multi_select.some(opt => parseInt(opt.name) === selectedPeople);
+
+    // 구매 체크박스 필터
+    const buyProp = page.properties['구매'];
+    const isBought = buyProp && buyProp.type === 'checkbox' && buyProp.checkbox === true;
+
+    const name = page.properties['게임명']?.title?.[0]?.plain_text || '';
+    const isExcluded = excluded.includes(name);
+
+    return hasPeople && isBought && !isExcluded;
+  });
+
+  if (filtered.length === 0) {
+    showError(`${selectedPeople}명이 가능하고 구매한 보드게임이 없어요 ㅠㅠ\n(제외 목록을 확인해보세요!)`);
+    return;
+  }
+
+  const picked = filtered[Math.floor(Math.random() * filtered.length)];
+  const name = picked.properties['게임명']?.title?.[0]?.plain_text || '이름 없음';
+  const people = picked.properties['가능인원'].multi_select.map(o => o.name).sort((a,b)=>a-b).join(', ');
+  currentGame = name;
+  showResult(name, people);
+}
+
+function reroll() {
+  if (!allFetched.length) { pickGame(); return; }
+  hideAll();
+  pickFromFetched();
+}
+
+function excludeCurrent() {
+  if (!currentGame) return;
+  if (!excluded.includes(currentGame)) {
+    excluded.push(currentGame);
+    localStorage.setItem('excluded_games', JSON.stringify(excluded));
+    renderExcluded();
+  }
+  hideAll();
+  pickFromFetched();
+}
+
+function removeExcluded(name) {
+  excluded = excluded.filter(e => e !== name);
+  localStorage.setItem('excluded_games', JSON.stringify(excluded));
+  renderExcluded();
+}
+
+function clearExcluded() {
+  excluded = [];
+  localStorage.setItem('excluded_games', JSON.stringify(excluded));
+  renderExcluded();
+}
+
+function renderExcluded() {
+  const section = document.getElementById('excludedSection');
+  const list = document.getElementById('excludedList');
+  list.innerHTML = '';
+  if (excluded.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  excluded.forEach(name => {
+    const tag = document.createElement('div');
+    tag.className = 'excluded-tag';
+    tag.innerHTML = `${name} <button onclick="removeExcluded('${name.replace(/'/g, "\\'")}')">✕</button>`;
+    list.appendChild(tag);
+  });
+}
+
+function showLoading(v) { document.getElementById('loading').className = 'loading' + (v ? ' show' : ''); }
+function hideAll() {
+  document.getElementById('errorBox').className = 'error-box';
+  document.getElementById('resultBox').className = 'result-box';
+}
+function showError(msg) {
+  showLoading(false);
+  const el = document.getElementById('errorBox');
+  el.textContent = msg;
+  el.className = 'error-box show';
+}
+function showResult(name, people) {
+  document.getElementById('resultName').textContent = name;
+  document.getElementById('resultPeople').textContent = `가능인원: ${people}명`;
+  document.getElementById('resultBox').className = 'result-box show';
+}
+</script>
+</body>
+</html>
