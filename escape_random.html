@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>방탈출 뽑기</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: #fff;
+    color: #1a1a1a;
+    padding: 20px;
+  }
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+  .section { margin-bottom: 16px; }
+  label { font-size: 13px; color: #888; margin-bottom: 6px; display: block; }
+  .people-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .people-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 1.5px solid #ddd; background: #fff;
+    font-size: 14px; cursor: pointer; transition: all .15s;
+    color: #1a1a1a; font-weight: 500;
+  }
+  .people-btn:hover { border-color: #E07B5D; color: #E07B5D; }
+  .people-btn.active { background: #E07B5D; border-color: #E07B5D; color: #fff; }
+  .pick-btn {
+    width: 100%; padding: 12px; border-radius: 10px; border: none;
+    background: #E07B5D; color: #fff; font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: background .15s; margin-bottom: 20px;
+  }
+  .pick-btn:hover { background: #c9664a; }
+  .pick-btn:active { transform: scale(0.98); }
+  .result-box {
+    border-radius: 12px; border: 1.5px solid #fde8e2;
+    background: #fff8f6; padding: 20px; text-align: center; display: none;
+  }
+  .result-box.show { display: block; animation: pop .3s ease; }
+  @keyframes pop {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .result-label { font-size: 12px; color: #E07B5D; font-weight: 600; margin-bottom: 6px; }
+  .result-name {
+    font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px;
+    text-decoration: none; display: block; transition: color .15s;
+  }
+  .result-name:hover { color: #E07B5D; text-decoration: underline; cursor: pointer; }
+  .result-shop { font-size: 13px; color: #888; margin-bottom: 14px; }
+  .action-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .reroll-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1.5px solid #E07B5D;
+    background: #fff; color: #E07B5D; font-size: 13px; cursor: pointer;
+    transition: background .15s;
+  }
+  .reroll-btn:hover { background: #fff8f6; }
+  .exclude-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1.5px solid #f0a0a0;
+    background: #fff; color: #c0392b; font-size: 13px; cursor: pointer;
+    transition: background .15s;
+  }
+  .exclude-btn:hover { background: #fff5f4; }
+  .error-box {
+    border-radius: 10px; border: 1px solid #ffd0cc;
+    background: #fff5f4; padding: 14px; font-size: 13px;
+    color: #c0392b; display: none; text-align: center; line-height: 1.6;
+  }
+  .error-box.show { display: block; }
+  .loading { text-align: center; font-size: 13px; color: #aaa; padding: 12px 0; display: none; }
+  .loading.show { display: block; }
+  .api-section {
+    margin-bottom: 20px; padding: 14px;
+    border-radius: 10px; background: #f9f9f9; border: 1px solid #eee;
+  }
+  .api-section input {
+    width: 100%; font-size: 13px; padding: 8px 10px;
+    border-radius: 8px; border: 1px solid #ddd; outline: none;
+    margin-top: 6px; color: #1a1a1a; background: #fff;
+  }
+  .api-section input:focus { border-color: #E07B5D; }
+  .save-btn {
+    margin-top: 8px; padding: 7px 16px; border-radius: 8px;
+    border: 1px solid #E07B5D; background: #fff; color: #E07B5D;
+    font-size: 13px; cursor: pointer;
+  }
+  .save-btn:hover { background: #fff8f6; }
+  .saved-msg { font-size: 12px; color: #1D9E75; margin-top: 6px; display: none; }
+  .api-toggle {
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; margin-bottom: 4px; user-select: none;
+    width: fit-content;
+  }
+  .api-toggle span { font-size: 13px; color: #aaa; }
+  .api-toggle .arrow { font-size: 10px; color: #aaa; transition: transform .2s; }
+  .api-toggle.open .arrow { transform: rotate(90deg); }
+  .api-body { display: none; }
+  .api-body.open { display: block; }
+  .excluded-section { margin-top: 16px; }
+  .excluded-title {
+    font-size: 12px; color: #aaa; margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .clear-btn {
+    font-size: 11px; color: #bbb; background: none; border: none;
+    cursor: pointer; text-decoration: underline;
+  }
+  .excluded-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .excluded-tag {
+    font-size: 12px; background: #f5f5f5; border-radius: 6px;
+    padding: 4px 10px; color: #888; display: flex; align-items: center; gap: 4px;
+  }
+  .excluded-tag button {
+    background: none; border: none; cursor: pointer;
+    color: #bbb; font-size: 12px; padding: 0; line-height: 1;
+  }
+  .excluded-tag button:hover { color: #c0392b; }
+</style>
+</head>
+<body>
+<h2>🔐 방탈출 뽑기</h2>
+
+<div class="api-section">
+  <div class="api-toggle" id="apiToggle" onclick="toggleApi()">
+    <span class="arrow">▶</span>
+    <span id="toggleLabel">API 키 설정</span>
+  </div>
+  <div class="api-body" id="apiBody">
+    <input type="password" id="apiKey" placeholder="ntn_로 시작하는 API 키 입력..." />
+    <br>
+    <button class="save-btn" onclick="saveKey()">저장</button>
+    <p class="saved-msg" id="savedMsg"></p>
+  </div>
+</div>
+
+<div class="section">
+  <label>인원 선택</label>
+  <div class="people-grid" id="peopleGrid"></div>
+</div>
+
+<button class="pick-btn" onclick="pickTheme()">🔐 뽑기!</button>
+<div class="loading" id="loading">불러오는 중...</div>
+<div class="error-box" id="errorBox"></div>
+<div class="result-box" id="resultBox">
+  <div class="result-label">오늘의 방탈출</div>
+  <a class="result-name" id="resultName" target="_blank" rel="noopener"></a>
+  <div class="result-shop" id="resultShop"></div>
+  <div class="action-btns">
+    <button class="reroll-btn" onclick="reroll()">🔄 다시 뽑기</button>
+    <button class="exclude-btn" onclick="excludeCurrent()">🚫 다시는 추천 안 함</button>
+  </div>
+</div>
+
+<div class="excluded-section" id="excludedSection" style="display:none">
+  <div class="excluded-title">
+    <span>제외된 테마</span>
+    <button class="clear-btn" onclick="clearExcluded()">전체 해제</button>
+  </div>
+  <div class="excluded-list" id="excludedList"></div>
+</div>
+
+<script>
+const DB_ID = '31a1e478332c806a8cabfdcfb136ac5a';
+const PROXY = 'https://shy-truth-5c30.ksm901522.workers.dev/';
+
+const SHOP_LINKS = {
+  '플러스이스케이프': 'https://www.plus-escape.com/reservation',
+  '오렌지티비 대구점': 'http://xn--sm2bu7i08gwyd91o.com/reservation',
+  '방탈출브이 삼덕점': 'http://www.v-escape.co.kr/',
+  '방탈출브이 공평점': 'http://www.v-escape.co.kr/',
+  '룸즈에이 동성로2호점': 'https://roomsa.co.kr/reservation.html',
+  '룸즈에이 동성로점': 'https://roomsa.co.kr/reservation.html',
+  '룸즈에이 아카데미점': 'https://roomsa.co.kr/reservation.html',
+  '시간의문 동성로점': 'https://gateoftime.kr/reservation.html?keycode=HiJhoQFf8ThapVG3',
+  '황금열쇠 동성로점': 'http://xn--jj0b998aq3cptw.com/layout/res/home.php?go=rev.make',
+  '황금열쇠 동성로2호점': 'http://xn--jj0b998aq3cptw.com/layout/res/home.php?go=rev.make',
+  '셜록홈즈 동성로점': 'https://sherlock-holmes.co.kr/reservation/',
+  '머더파커 대구1호점': 'http://murderparker.com/',
+  '머더파커 대구2호점': 'http://murderparker.com/',
+  '비밀의화원 동성로점': 'https://www.secretgardenescape.com/reservation.html?k_shopno=6',
+  '지구별방탈출 동성로점': 'https://xn--2e0b040a4xj.com/reservation',
+  '이스케이퍼스 동성로점': 'https://escapersd.com/reservation',
+  '플레이더월드 동성로점': 'https://reservation.playthe.world/reservation.html',
+  '앨리스방탈출 동성로점': 'http://www.alice-escape.com/',
+};
+
+let selectedPeople = null;
+let currentGame = null;
+let allFetched = [];
+let excluded = JSON.parse(localStorage.getItem('excluded_escape') || '[]');
+
+const grid = document.getElementById('peopleGrid');
+for (let i = 2; i <= 10; i++) {
+  const btn = document.createElement('button');
+  btn.className = 'people-btn';
+  btn.textContent = i;
+  btn.onclick = () => {
+    selectedPeople = i;
+    document.querySelectorAll('.people-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  };
+  grid.appendChild(btn);
+}
+
+function toggleApi() {
+  document.getElementById('apiBody').classList.toggle('open');
+  document.getElementById('apiToggle').classList.toggle('open');
+}
+
+window.onload = () => {
+  const saved = localStorage.getItem('notion_api_key_escape');
+  if (saved) {
+    document.getElementById('apiKey').value = saved;
+    const msg = document.getElementById('savedMsg');
+    msg.style.display = 'block';
+    msg.textContent = '✓ 저장된 키가 있어요!';
+    document.getElementById('toggleLabel').textContent = 'API 키 설정 ✓';
+  } else {
+    toggleApi();
+  }
+  renderExcluded();
+};
+
+function saveKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (!key) return;
+  localStorage.setItem('notion_api_key_escape', key);
+  const msg = document.getElementById('savedMsg');
+  msg.style.display = 'block';
+  msg.textContent = '✓ 저장되었습니다!';
+  document.getElementById('toggleLabel').textContent = 'API 키 설정 ✓';
+  setTimeout(() => {
+    document.getElementById('apiBody').classList.remove('open');
+    document.getElementById('apiToggle').classList.remove('open');
+  }, 800);
+}
+
+async function pickTheme() {
+  const apiKey = localStorage.getItem('notion_api_key_escape') || document.getElementById('apiKey').value.trim();
+  if (!apiKey) { showError('API 키를 먼저 입력하고 저장해주세요!'); return; }
+  if (!selectedPeople) { showError('인원을 먼저 선택해주세요!'); return; }
+
+  showLoading(true);
+  hideAll();
+  allFetched = [];
+
+  try {
+    let hasMore = true;
+    let cursor = undefined;
+
+    while (hasMore) {
+      const body = { apiKey, dbId: DB_ID };
+      if (cursor) body.cursor = cursor;
+
+      const res = await fetch(PROXY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) throw new Error('프록시 호출 실패: ' + res.status);
+      const data = await res.json();
+
+      if (data.status === 401) throw new Error('API 키가 올바르지 않아요!');
+      if (data.status === 404) throw new Error('데이터베이스를 찾을 수 없어요! Integration 연결을 확인해주세요!');
+      if (!data.results) throw new Error('응답 오류: ' + JSON.stringify(data));
+
+      allFetched = allFetched.concat(data.results);
+      hasMore = data.has_more;
+      cursor = data.next_cursor;
+    }
+
+    pickFromFetched();
+
+  } catch(e) {
+    showError('오류: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+function pickFromFetched() {
+  const filtered = allFetched.filter(page => {
+    // 인원 필터
+    const peopleProp = page.properties['인원'];
+    if (!peopleProp || peopleProp.type !== 'multi_select') return false;
+    const hasPeople = peopleProp.multi_select.some(opt => parseInt(opt.name) === selectedPeople);
+
+    // 폐점 체크박스 필터 (폐점 체크 안된 것만)
+    const closedProp = page.properties['폐점'];
+    const isClosed = closedProp && closedProp.type === 'checkbox' && closedProp.checkbox === true;
+
+    // 탈출멤버 필터 (비어있는 것만)
+    const memberProp = page.properties['탈출멤버'];
+    const hasMember = memberProp && memberProp.type === 'multi_select' && memberProp.multi_select.length > 0;
+
+    const name = page.properties['테마명']?.title?.[0]?.plain_text || '';
+    const isExcluded = excluded.includes(name);
+
+    return hasPeople && !isClosed && !hasMember && !isExcluded;
+  });
+
+  if (filtered.length === 0) {
+    showError(`${selectedPeople}명이 가능한 방탈출 테마가 없어요 ㅠㅠ\n(제외 목록을 확인해보세요!)`);
+    return;
+  }
+
+  const picked = filtered[Math.floor(Math.random() * filtered.length)];
+  const name = picked.properties['테마명']?.title?.[0]?.plain_text || '이름 없음';
+  const shopList = picked.properties['업체명']?.multi_select || [];
+  const shopName = shopList.map(s => s.name).join(', ');
+  const shopLink = shopList.length > 0 ? (SHOP_LINKS[shopList[0].name] || '#') : '#';
+  const pageUrl = `https://notion.so/${picked.id.replace(/-/g, '')}`;
+
+  currentGame = name;
+  showResult(name, shopName, shopLink, pageUrl);
+}
+
+function reroll() {
+  if (!allFetched.length) { pickTheme(); return; }
+  hideAll();
+  pickFromFetched();
+}
+
+function excludeCurrent() {
+  if (!currentGame) return;
+  if (!excluded.includes(currentGame)) {
+    excluded.push(currentGame);
+    localStorage.setItem('excluded_escape', JSON.stringify(excluded));
+    renderExcluded();
+  }
+  hideAll();
+  pickFromFetched();
+}
+
+function removeExcluded(name) {
+  excluded = excluded.filter(e => e !== name);
+  localStorage.setItem('excluded_escape', JSON.stringify(excluded));
+  renderExcluded();
+}
+
+function clearExcluded() {
+  excluded = [];
+  localStorage.setItem('excluded_escape', JSON.stringify(excluded));
+  renderExcluded();
+}
+
+function renderExcluded() {
+  const section = document.getElementById('excludedSection');
+  const list = document.getElementById('excludedList');
+  list.innerHTML = '';
+  if (excluded.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  excluded.forEach(name => {
+    const tag = document.createElement('div');
+    tag.className = 'excluded-tag';
+    tag.innerHTML = `${name} <button onclick="removeExcluded('${name.replace(/'/g, "\\'")}')">✕</button>`;
+    list.appendChild(tag);
+  });
+}
+
+function showLoading(v) { document.getElementById('loading').className = 'loading' + (v ? ' show' : ''); }
+function hideAll() {
+  document.getElementById('errorBox').className = 'error-box';
+  document.getElementById('resultBox').className = 'result-box';
+}
+function showError(msg) {
+  showLoading(false);
+  const el = document.getElementById('errorBox');
+  el.textContent = msg;
+  el.className = 'error-box show';
+}
+function showResult(name, shop, shopLink, pageUrl) {
+  const nameEl = document.getElementById('resultName');
+  nameEl.textContent = name;
+  nameEl.href = pageUrl || '#';
+  document.getElementById('resultShop').innerHTML = shop
+    ? `<a href="${shopLink}" target="_blank" rel="noopener" style="color:#E07B5D;font-size:13px;">${shop}</a>`
+    : '';
+  document.getElementById('resultBox').className = 'result-box show';
+}
+</script>
+</body>
+</html>
